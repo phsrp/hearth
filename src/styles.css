@@ -411,3 +411,5 @@ body.dropping .list-wrap::after {
 .banner.update #update-go { margin-left: 0; }
 .update-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .update-row .muted { font-size: 12px; }
+.seg.wide { align-self: flex-start; }
+.seg.wide button { width: auto; padding: 0 14px; font-weight: 600; font-size: 12px; }

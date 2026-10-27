@@ -428,12 +428,22 @@ function gameForm(v) {
     <label class="field"><span>Name</span><input class="input" id="f-name" value="${esc(v.name)}" spellcheck="false"></label>
     ${v.showExe ? `<div class="field"><span>Game file</span><div class="input-row"><input class="input mono" id="f-exe" value="${esc(v.exe)}" spellcheck="false"><button class="btn" id="f-browse">${icon('folder-open')}Browse</button></div>${v.exeHint ? `<small>${v.exeHint}</small>` : ''}</div>` : ''}
     ${v.showArgs ? `<label class="field"><span>Launch options</span><input class="input mono" id="f-args" value="${esc(v.args)}" placeholder="Optional, for example -windowed" spellcheck="false"></label>` : ''}
+    ${v.showDiscord ? `<div class="field"><span>Discord status</span>
+      <div class="seg wide" id="f-discord">${[['auto', 'Auto'], ['always', 'Always'], ['never', 'Never']].map(([k, l]) => `<button type="button" data-m="${k}" class="${v.discordMode === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+      <small id="f-discord-hint">${esc(v.discordHint || '')}</small></div>` : ''}
     <div class="field"><span>Cover</span><div class="cover-pick"><div class="thumb" id="f-thumb">${v.cover ? `<img src="${esc(imgUrl(v.cover))}" alt="">` : icon('photo')}</div>
       <div class="input-row"><button class="btn" id="f-cover">${icon('photo')}Pick image</button><button class="btn ghost" id="f-cover-x" ${v.cover ? '' : 'hidden'}>Use default</button></div></div>
       <small>A portrait image looks best (600 × 900).</small></div>
   </div>`;
 }
 function wireForm(m, v) {
+  if ($('#f-discord', m)) $('#f-discord', m).onclick = (e) => {
+    const b = e.target.closest('[data-m]');
+    if (!b) return;
+    v.discordMode = b.dataset.m;
+    for (const x of $$('#f-discord button', m)) x.classList.toggle('on', x === b);
+    $('#f-discord-hint', m).textContent = discordHint(v.discordMode, v.covers);
+  };
   if ($('#f-browse', m)) $('#f-browse', m).onclick = async () => { const p = await window.hub.pickExe($('#f-exe', m).value || undefined); if (p) { $('#f-exe', m).value = p.exe; if (!$('#f-name', m).value) $('#f-name', m).value = p.name; } };
   $('#f-cover', m).onclick = async () => {
     const p = await window.hub.pickImage();
@@ -491,17 +501,32 @@ async function scanFolder(dir) {
   };
 }
 
+function discordHint(mode, covers) {
+  if (mode === 'always') return 'Hearth always sets your Discord status for this game.';
+  if (mode === 'never') return 'Hearth never sets your Discord status for this game.';
+  if (covers === 'detected') return 'Discord recognises this game by itself, so Hearth leaves it alone.';
+  if (covers === 'sdk') return 'This game sets its own Discord status, so Hearth leaves it alone.';
+  return "Discord doesn't show this game by itself, so Hearth sets your status while you play.";
+}
+
 function editGame(g) {
-  const v = { name: nameOf(g), exe: g.customExe || g.exe || '', args: g.args || '', cover: g.customCover || null, showExe: g.source !== 'steam', showArgs: g.source !== 'steam',
+  const mode = g.discordMode || 'auto';
+  const v = { showDiscord: true, discordMode: mode, covers: undefined, discordHint: mode === 'auto' ? 'Checking whether Discord shows this game by itself...' : discordHint(mode), name: nameOf(g), exe: g.customExe || g.exe || '', args: g.args || '', cover: g.customCover || null, showExe: g.source !== 'steam', showArgs: g.source !== 'steam',
     exeHint: g.source === 'itch' ? 'Hearth tracks playtime for whatever runs from the game folder.' : '' };
   const m = modal(`${head('pencil', 'Edit ' + nameOf(g))}<div class="modal-body">${gameForm(v)}</div>
     <div class="modal-foot">${g.customName ? '<button class="btn ghost" data-reset>Reset name</button>' : ''}<div class="spacer"></div><button class="btn ghost" data-x>Cancel</button><button class="btn primary" data-ok>${icon('check')}Save</button></div>`, 'narrow');
   wireForm(m, v);
+  // Checked as if set to Auto, so the hint can explain what Auto would do
+  window.hub.discordCovers(g.id).then((covers) => {
+    v.covers = covers;
+    const h = $('#f-discord-hint', m);
+    if (h && h.isConnected && v.discordMode === 'auto') h.textContent = discordHint('auto', covers);
+  });
   $('[data-x]', m).onclick = () => closeModal();
   if ($('[data-reset]', m)) $('[data-reset]', m).onclick = () => { $('#f-name', m).value = g.name; };
   $('[data-ok]', m).onclick = async () => {
     const name = $('#f-name', m).value.trim();
-    const patch = { customName: name && name !== g.name ? name : null, customCover: v.cover };
+    const patch = { customName: name && name !== g.name ? name : null, customCover: v.cover, discordMode: v.discordMode === 'auto' ? null : v.discordMode };
     if (v.showExe) {
       const exe = $('#f-exe', m).value.trim();
       if (exe !== (g.customExe || g.exe || '')) patch.customExe = exe || null;
@@ -561,12 +586,13 @@ function settings() {
       <div class="toggle-row"><div class="t"><b>Show what I'm playing on Discord</b><small>Your status shows the game, how long this session has run and your total playtime.</small></div><label class="toggle"><input type="checkbox" id="s-rpc" ${s.discordRpc ? 'checked' : ''}><span class="track"></span></label></div>
       <label class="field"><span>Discord application ID</span><input class="input mono" id="s-rpc-id" value="${esc(s.discordClientId)}" placeholder="Paste the Application ID" spellcheck="false">
         <small>One-time setup: open the <a data-url="https://discord.com/developers/applications">Discord Developer Portal</a>, click <b>New Application</b>, name it <b>Hearth</b> and copy its <b>Application ID</b> here. <span id="s-rpc-state"></span></small></label>
+      <div class="toggle-row"><div class="t"><b>Skip games Discord already shows</b><small>Games Discord recognises on its own, or that set their own Discord status, are left alone so you don't get two. Change it per game with Edit.</small></div><label class="toggle"><input type="checkbox" id="s-rpc-skip" ${s.discordSkipKnown !== false ? 'checked' : ''}><span class="track"></span></label></div>
       <div class="toggle-row"><div class="t"><b>Use the game's own icon</b><small>Discord can only show pictures from a web link, so each game's icon is uploaded once to catbox.moe (a public image host). Steam games use Steam's icon and need no upload.</small></div><label class="toggle"><input type="checkbox" id="s-rpc-ico" ${s.discordIcons ? 'checked' : ''}><span class="track"></span></label></div>
       ${hidden.length ? `<div class="section-title">${icon('trash')}Removed games</div><div class="scan-list">${hidden.map((g) => `<div class="toggle-row"><span>${esc(nameOf(g))} <span class="pill ${g.source}">${SOURCES[g.source].label}</span></span><button class="btn small" data-unhide="${esc(g.id)}">${icon('arrow-back-up')}Restore</button></div>`).join('')}</div>` : ''}
     </div></div>
     <div class="modal-foot"><div class="spacer"></div><button class="btn ghost" data-x>Cancel</button><button class="btn primary" data-ok>${icon('check')}Save</button></div>`, 'narrow');
   const itchDirs = [...(s.itchDirs || [])];
-  $('#s-upd-check', m).onclick = () => { bannerDismissed = false; window.hub.update.check(); };
+  $('#s-upd-check', m).onclick = () => { bannerDismissed = false; window.hub.updates.check(); };
   window.hub.discordStatus().then((d) => {
     const el = $('#s-rpc-state', m);
     if (el && d.enabled && d.hasId) {
@@ -597,7 +623,7 @@ function settings() {
   $('[data-x]', m).onclick = () => closeModal();
   $('[data-ok]', m).onclick = async () => {
     const patch = { steamId: $('#s-id', m).value.trim(), trayOnClose: $('#s-tray', m).checked, startWithWindows: $('#s-boot', m).checked, itchDirs,
-      discordRpc: $('#s-rpc', m).checked, discordClientId: $('#s-rpc-id', m).value.trim().replace(/\D/g, ''), discordIcons: $('#s-rpc-ico', m).checked };
+      discordRpc: $('#s-rpc', m).checked, discordClientId: $('#s-rpc-id', m).value.trim().replace(/\D/g, ''), discordIcons: $('#s-rpc-ico', m).checked, discordSkipKnown: $('#s-rpc-skip', m).checked };
     const key = $('#s-key', m).value.trim();
     if (key) patch.steamApiKey = key;
     apply(await window.hub.setSettings(patch));
@@ -778,10 +804,10 @@ function renderUpdate(u) {
   const s = $('#s-upd');
   if (s) s.textContent = updateText(u);
 }
-$('#update-go').addEventListener('click', () => (update.status === 'ready' ? window.hub.update.install() : window.hub.update.open()));
+$('#update-go').addEventListener('click', () => (update.status === 'ready' ? window.hub.updates.install() : window.hub.updates.open()));
 $('#update-later').addEventListener('click', () => { bannerDismissed = true; $('#update-banner').hidden = true; });
-window.hub.update.onState(renderUpdate);
-window.hub.update.get().then(renderUpdate);
+window.hub.updates.onState(renderUpdate);
+window.hub.updates.get().then(renderUpdate);
 
 window.hub.onChange((snap) => apply(snap));
 // While a game runs, keep its playtime ticking in the details panel and footer without a full re-render.

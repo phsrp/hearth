@@ -28,7 +28,7 @@ One library for every game on your PC: Steam, itch.io and everything else, with 
 - **Every game in one place:** Steam and itch.io games show up on their own. Everything else (DRM-free, standalone, cracked or emulated games) you add yourself.
 - **Steam playtime sync:** Hearth reads your playtime straight from Steam's files, no login needed. Add a free Steam Web API key to also see exact playtime for games you own but don't have installed.
 - **Playtime for everything else:** Hearth notices when a game is running, even if you didn't start it from Hearth, and counts the time. Already played a game before Hearth? Set its playtime and tracking carries on from there.
-- **Discord status:** shows the game you're playing, how long this session has run and your total playtime, with the game's own icon.
+- **Discord status:** shows the game you're playing, how long this session has run and your total playtime, with the game's own icon. Only for games Discord doesn't already show, so you never get two.
 - **Add standalone games easily:** click **Add game** and pick the .exe, drop an .exe or shortcut on the window, or point Hearth at a folder like `D:\Games` and tick the games it finds inside.
 - **Remove anything:** right-click a game and choose **Remove from Hearth** (or press Delete). Steam and itch.io games stay removed after rescans, and you can bring them back from Settings.
 - **Covers and list view:** a cover grid with Steam's library art, or a compact list sorted by playtime, last played, name or store
@@ -79,7 +79,9 @@ Discord needs an "application" to show a status, and you make one once:
 3. Copy the **Application ID**.
 4. In Hearth, open **Settings** (the gear at the top), paste it into **Discord application ID** and click **Save**.
 
-Start a game and your Discord status shows it. Steam games use Steam's icon. For other games Discord can only show a picture that's on the web, so Hearth uploads each game's icon once to [catbox.moe](https://catbox.moe) (a public image host). Turn off **Use the game's own icon** in Settings if you'd rather not.
+Start a game and your Discord status shows it.
+
+Hearth only steps in for games Discord doesn't already show. If Discord recognises the game by itself, or the game sets its own Discord status, Hearth leaves it alone so you don't get two. To change that for one game, open **Edit** and set **Discord status** to **Always** or **Never**. To show Hearth's status for every game, turn off **Skip games Discord already shows** in Settings. Steam games use Steam's icon. For other games Discord can only show a picture that's on the web, so Hearth uploads each game's icon once to [catbox.moe](https://catbox.moe) (a public image host). Turn off **Use the game's own icon** in Settings if you'd rather not.
 
 ## Getting exact Steam playtime (optional)
 

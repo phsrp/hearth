@@ -7,9 +7,10 @@ const { spawn, execFile } = require('child_process');
 const { pathToFileURL } = require('url');
 const steam = require('./lib/steam');
 const itch = require('./lib/itch');
-const { pickExe, scanFolder, prettyName } = require('./lib/exe');
+const { pickExe, scanFolder, prettyName, listExes } = require('./lib/exe');
 const { Tracker } = require('./lib/tracker');
 const { DiscordRpc } = require('./lib/discord');
+const { DiscordKnown } = require('./lib/discord-known');
 const { createUpdater } = require('./lib/updater');
 
 if (process.env.HEARTH_USERDATA) app.setPath('userData', process.env.HEARTH_USERDATA);
@@ -24,7 +25,7 @@ const TICK = 10;
 // ---------- storage ----------
 const dataFile = () => path.join(app.getPath('userData'), 'library.json');
 const DEFAULT_SETTINGS = { steamApiKey: '', steamId: '', showUninstalled: true, trayOnClose: true, startWithWindows: false, itchDirs: [], autoSyncMinutes: 15,
-  discordRpc: true, discordClientId: '', discordIcons: true };
+  discordRpc: true, discordClientId: '', discordIcons: true, discordSkipKnown: true };
 let db = { games: {}, settings: { ...DEFAULT_SETTINGS }, history: {}, meta: {} };
 function load() {
   try {
@@ -63,6 +64,7 @@ function playSeconds(g) {
 }
 
 const running = new Map(); // id -> session start (ms)
+const runningPaths = new Map(); // id -> the game's running process paths (Discord matches on these)
 function publicGame(g) {
   return { ...g, playSeconds: Math.max(0, Math.round(playSeconds(g))), running: running.has(g.id), runningSince: running.get(g.id) || null };
 }
@@ -195,7 +197,9 @@ tracker.on('tick', (paths) => {
   for (const g of Object.values(db.games)) {
     if (!g.installed) continue;
     const m = matcher(g);
-    const on = !!m && paths.some(m);
+    const hits = m ? paths.filter(m) : [];
+    const on = hits.length > 0;
+    if (on) runningPaths.set(g.id, hits); else runningPaths.delete(g.id);
     if (on && !running.has(g.id)) { running.set(g.id, now); changed = true; }
     if (on) {
       g.lastPlayed = Math.floor(now / 1000);
@@ -289,13 +293,14 @@ ipcMain.handle('game:addMany', (_e, list) => {
   save(); notify();
   return added;
 });
-const EDITABLE = ['customName', 'customCover', 'customExe', 'args', 'favorite', 'hidden', 'offsetSeconds'];
+const EDITABLE = ['customName', 'customCover', 'customExe', 'args', 'favorite', 'hidden', 'offsetSeconds', 'discordMode'];
 ipcMain.handle('game:update', (_e, id, patch) => {
   const g = db.games[id];
   if (!g) return false;
   for (const k of EDITABLE) if (k in patch) g[k] = patch[k] === '' ? null : patch[k];
   if (g.source === 'other' && patch.customExe) { g.exe = patch.customExe; g.dir = path.dirname(patch.customExe); g.customExe = null; }
   save(); notify();
+  if ('discordMode' in patch || 'hidden' in patch) updatePresence();
   return true;
 });
 // Set the shown playtime to an exact number: stored as an offset so tracking keeps adding on top.
@@ -361,6 +366,7 @@ ipcMain.handle('game:icons', async (_e, ids) => {
 
 // ---------- Discord Rich Presence ----------
 const rpc = new DiscordRpc();
+const known = new DiscordKnown(path.join(app.getPath('userData'), 'discord-detectable.json'), (u) => net.fetch(u));
 // Discord only shows images from a public link, so an exe's icon is uploaded once to catbox.moe and the link is reused.
 async function publicIcon(g) {
   if (g.source === 'steam') {
@@ -391,10 +397,20 @@ async function publicIcon(g) {
 }
 const hours = (s) => (s < 3600 ? `${Math.max(1, Math.round(s / 60))} min` : `${(s / 3600).toFixed(s < 36000 ? 1 : 0).replace(/\.0$/, '')} h`);
 let presenceFor = null;
-// Shows the game started most recently: its name, how long this session has run, and the total playtime.
+// Whether Hearth should set a status for this game. "auto" leaves alone games Discord already shows by itself.
+function discordCovers(g) {
+  const mode = g.discordMode || 'auto';
+  if (mode === 'always') return null;
+  if (mode === 'never') return 'off';
+  if (!db.settings.discordSkipKnown) return null;
+  return known.reason(g.dir || path.dirname(g.customExe || g.exe || ''), runningPaths.get(g.id) || []);
+}
+// Shows the game started most recently that Discord doesn't already cover: its name, how long this session
+// has run, and the total playtime.
 async function updatePresence() {
   rpc.setClientId(db.settings.discordRpc ? db.settings.discordClientId : '');
-  const live = [...running.entries()].filter(([id]) => db.games[id] && !db.games[id].hidden).sort((a, b) => b[1] - a[1]);
+  if (db.settings.discordRpc && db.settings.discordSkipKnown) await known.load();
+  const live = [...running.entries()].filter(([id]) => db.games[id] && !db.games[id].hidden && !discordCovers(db.games[id])).sort((a, b) => b[1] - a[1]);
   if (!db.settings.discordRpc || !live.length) { presenceFor = null; rpc.set(null); return; }
   const [id, since] = live[0];
   const g = db.games[id];
@@ -409,7 +425,17 @@ async function updatePresence() {
   const img = await publicIcon(g);
   if (img && presenceFor === id) rpc.set({ ...base, assets: { large_image: img, large_text: name } });
 }
-ipcMain.handle('discord:status', () => ({ connected: rpc.ready, error: rpc.error || null,enabled: !!db.settings.discordRpc, hasId: !!db.settings.discordClientId, game: presenceFor }));
+ipcMain.handle('discord:status', () => ({ connected: rpc.ready, error: rpc.error || null, enabled: !!db.settings.discordRpc, hasId: !!db.settings.discordClientId, game: presenceFor }));
+// For the details panel: does Discord already show this game, or will Hearth?
+ipcMain.handle('discord:covers', async (_e, id) => {
+  const g = db.games[id];
+  if (!g) return null;
+  await known.load();
+  // As if set to Auto, so the Edit window can explain what Auto would do
+  const dir = g.dir || path.dirname(g.customExe || g.exe || '');
+  const paths = runningPaths.get(g.id) || (dir && fs.existsSync(dir) ? listExes(dir).map((e) => e.path) : [g.customExe || g.exe].filter(Boolean));
+  return known.reason(dir, paths);
+});
 
 // ---------- dialogs and shell ----------
 ipcMain.handle('pick:exe', async (_e, start) => {

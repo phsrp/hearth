@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('hub', {
   icon: call('game:icon'),
   icons: call('game:icons'),
   discordStatus: call('discord:status'),
+  discordCovers: call('discord:covers'),
   pathOf: (file) => webUtils.getPathForFile(file),
   inspect: call('path:inspect'),
   pickExe: call('pick:exe'),
@@ -28,5 +29,5 @@ contextBridge.exposeInMainWorld('hub', {
   titlebar: call('theme:titlebar'),
   onChange: on('library:changed'),
   onTick: on('library:tick'),
-  update: { get: call('update:get'), check: call('update:check'), install: call('update:install'), open: call('update:open'), onState: on('update:state') },
+  updates: { get: call('update:get'), check: call('update:check'), install: call('update:install'), open: call('update:open'), onState: on('update:state') },
 });

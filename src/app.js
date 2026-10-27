@@ -504,6 +504,7 @@ async function scanFolder(dir) {
 function discordHint(mode, covers) {
   if (mode === 'always') return 'Hearth always sets your Discord status for this game.';
   if (mode === 'never') return 'Hearth never sets your Discord status for this game.';
+  if (covers === 'steam') return 'Discord already shows Steam games through Steam, so Hearth leaves it alone.';
   if (covers === 'detected') return 'Discord recognises this game by itself, so Hearth leaves it alone.';
   if (covers === 'sdk') return 'This game sets its own Discord status, so Hearth leaves it alone.';
   return "Discord doesn't show this game by itself, so Hearth sets your status while you play.";
@@ -586,7 +587,7 @@ function settings() {
       <div class="toggle-row"><div class="t"><b>Show what I'm playing on Discord</b><small>Your status shows the game, how long this session has run and your total playtime.</small></div><label class="toggle"><input type="checkbox" id="s-rpc" ${s.discordRpc ? 'checked' : ''}><span class="track"></span></label></div>
       <label class="field"><span>Discord application ID</span><input class="input mono" id="s-rpc-id" value="${esc(s.discordClientId)}" placeholder="Paste the Application ID" spellcheck="false">
         <small>One-time setup: open the <a data-url="https://discord.com/developers/applications">Discord Developer Portal</a>, click <b>New Application</b>, name it <b>Hearth</b> and copy its <b>Application ID</b> here. <span id="s-rpc-state"></span></small></label>
-      <div class="toggle-row"><div class="t"><b>Skip games Discord already shows</b><small>Games Discord recognises on its own, or that set their own Discord status, are left alone so you don't get two. Change it per game with Edit.</small></div><label class="toggle"><input type="checkbox" id="s-rpc-skip" ${s.discordSkipKnown !== false ? 'checked' : ''}><span class="track"></span></label></div>
+      <div class="toggle-row"><div class="t"><b>Skip games Discord already shows</b><small>Steam games, games Discord recognises on its own, and games that set their own Discord status are left alone so you don't get two. Change it per game with Edit.</small></div><label class="toggle"><input type="checkbox" id="s-rpc-skip" ${s.discordSkipKnown !== false ? 'checked' : ''}><span class="track"></span></label></div>
       <div class="toggle-row"><div class="t"><b>Use the game's own icon</b><small>Discord can only show pictures from a web link, so each game's icon is uploaded once to catbox.moe (a public image host). Steam games use Steam's icon and need no upload.</small></div><label class="toggle"><input type="checkbox" id="s-rpc-ico" ${s.discordIcons ? 'checked' : ''}><span class="track"></span></label></div>
       ${hidden.length ? `<div class="section-title">${icon('trash')}Removed games</div><div class="scan-list">${hidden.map((g) => `<div class="toggle-row"><span>${esc(nameOf(g))} <span class="pill ${g.source}">${SOURCES[g.source].label}</span></span><button class="btn small" data-unhide="${esc(g.id)}">${icon('arrow-back-up')}Restore</button></div>`).join('')}</div>` : ''}
     </div></div>

@@ -403,6 +403,8 @@ function discordCovers(g) {
   if (mode === 'always') return null;
   if (mode === 'never') return 'off';
   if (!db.settings.discordSkipKnown) return null;
+  // Discord shows every game Steam launches through its Steam integration
+  if (g.source === 'steam') return 'steam';
   return known.reason(g.dir || path.dirname(g.customExe || g.exe || ''), runningPaths.get(g.id) || []);
 }
 // Shows the game started most recently that Discord doesn't already cover: its name, how long this session
@@ -432,6 +434,7 @@ ipcMain.handle('discord:covers', async (_e, id) => {
   if (!g) return null;
   await known.load();
   // As if set to Auto, so the Edit window can explain what Auto would do
+  if (g.source === 'steam') return 'steam';
   const dir = g.dir || path.dirname(g.customExe || g.exe || '');
   const paths = runningPaths.get(g.id) || (dir && fs.existsSync(dir) ? listExes(dir).map((e) => e.path) : [g.customExe || g.exe].filter(Boolean));
   return known.reason(dir, paths);

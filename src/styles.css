@@ -403,3 +403,11 @@ body.dropping .list-wrap::after {
 }
 .menu kbd { margin-left: auto; font: inherit; font-size: 11px; color: var(--muted); }
 .toolbar .btn.small .i { width: 15px; height: 15px; }
+
+/* Update banner */
+.banner.update { background: color-mix(in srgb, var(--iris) 14%, var(--base)); border-bottom-color: color-mix(in srgb, var(--iris) 30%, transparent); }
+.banner.update > .i { color: var(--iris); }
+.banner.update #update-later { margin-left: auto; }
+.banner.update #update-go { margin-left: 0; }
+.update-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.update-row .muted { font-size: 12px; }

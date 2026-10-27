@@ -552,6 +552,11 @@ function settings() {
       <div class="section-title">${icon('clock-play')}Tracking</div>
       <div class="toggle-row"><div class="t"><b>Keep running in the tray</b><small>Closing the window keeps tracking playtime. Quit from the tray icon.</small></div><label class="toggle"><input type="checkbox" id="s-tray" ${s.trayOnClose ? 'checked' : ''}><span class="track"></span></label></div>
       <div class="toggle-row"><div class="t"><b>Start with Windows</b><small>Opens hidden in the tray, so games you start from anywhere get tracked.</small></div><label class="toggle"><input type="checkbox" id="s-boot" ${s.startWithWindows ? 'checked' : ''}><span class="track"></span></label></div>
+      <div class="section-title">${icon('download')}Updates</div>
+      <div class="update-row"><span>Hearth <b>${esc(update.current || '')}</b></span><span class="muted" id="s-upd">${esc(updateText(update))}</span>
+        <span class="spacer"></span><button class="btn small" id="s-upd-check">${icon('refresh')}Check now</button></div>
+      <div class="field"><small>Hearth checks for a new version every time it starts.${update.portable ? ' The portable version can’t update itself, so it tells you when there’s a new download.' : ' New versions download in the background and install when you restart Hearth.'}</small></div>
+
       <div class="section-title">${icon('brand-discord')}Discord</div>
       <div class="toggle-row"><div class="t"><b>Show what I'm playing on Discord</b><small>Your status shows the game, how long this session has run and your total playtime.</small></div><label class="toggle"><input type="checkbox" id="s-rpc" ${s.discordRpc ? 'checked' : ''}><span class="track"></span></label></div>
       <label class="field"><span>Discord application ID</span><input class="input mono" id="s-rpc-id" value="${esc(s.discordClientId)}" placeholder="Paste the Application ID" spellcheck="false">
@@ -561,6 +566,7 @@ function settings() {
     </div></div>
     <div class="modal-foot"><div class="spacer"></div><button class="btn ghost" data-x>Cancel</button><button class="btn primary" data-ok>${icon('check')}Save</button></div>`, 'narrow');
   const itchDirs = [...(s.itchDirs || [])];
+  $('#s-upd-check', m).onclick = () => { bannerDismissed = false; window.hub.update.check(); };
   window.hub.discordStatus().then((d) => {
     const el = $('#s-rpc-state', m);
     if (el && d.enabled && d.hasId) {
@@ -743,6 +749,39 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Delete' && i >= 0 && !inInput) { e.preventDefault(); doAction('remove', list[i]); return; }
   if (!inInput && e.key.length === 1 && !e.ctrlKey && !e.altKey && /\S/.test(e.key)) search.focus();
 });
+
+// ---------- updates ----------
+let update = {};
+let bannerDismissed = false;
+function updateText(u) {
+  switch (u.status) {
+    case 'checking': return 'Checking for updates...';
+    case 'latest': return 'You have the newest version.';
+    case 'downloading': return `Downloading ${u.version || 'update'}${u.percent ? ` (${u.percent}%)` : ''}...`;
+    case 'ready': return `Version ${u.version} is ready. Restart to update.`;
+    case 'available': return `Version ${u.version} is out.`;
+    case 'error': return `Couldn't check for updates: ${u.error}`;
+    default: return '';
+  }
+}
+function renderUpdate(u) {
+  update = u;
+  const b = $('#update-banner');
+  const show = !bannerDismissed && (u.status === 'ready' || u.status === 'available');
+  b.hidden = !show;
+  if (show) {
+    $('#update-text').innerHTML = u.status === 'ready'
+      ? `<b>Hearth ${esc(u.version)}</b> is downloaded. Restart Hearth to finish updating.`
+      : `<b>Hearth ${esc(u.version)}</b> is out. Download it to update.`;
+    $('#update-go').innerHTML = u.status === 'ready' ? icon('refresh') + 'Restart now' : icon('download') + 'Download';
+  }
+  const s = $('#s-upd');
+  if (s) s.textContent = updateText(u);
+}
+$('#update-go').addEventListener('click', () => (update.status === 'ready' ? window.hub.update.install() : window.hub.update.open()));
+$('#update-later').addEventListener('click', () => { bannerDismissed = true; $('#update-banner').hidden = true; });
+window.hub.update.onState(renderUpdate);
+window.hub.update.get().then(renderUpdate);
 
 window.hub.onChange((snap) => apply(snap));
 // While a game runs, keep its playtime ticking in the details panel and footer without a full re-render.

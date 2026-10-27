@@ -10,6 +10,7 @@ const itch = require('./lib/itch');
 const { pickExe, scanFolder, prettyName } = require('./lib/exe');
 const { Tracker } = require('./lib/tracker');
 const { DiscordRpc } = require('./lib/discord');
+const { createUpdater } = require('./lib/updater');
 
 if (process.env.HEARTH_USERDATA) app.setPath('userData', process.env.HEARTH_USERDATA);
 if (!app.requestSingleInstanceLock()) app.quit();
@@ -463,6 +464,13 @@ ipcMain.handle('steam:testApi', async (_e, key, id) => {
     return { ok: true, count: list.length };
   } catch (e) { return { ok: false, error: e.message }; }
 });
+// ---------- updates ----------
+const updater = createUpdater((s) => { if (win && !win.isDestroyed()) win.webContents.send('update:state', s); });
+ipcMain.handle('update:get', () => updater.get());
+ipcMain.handle('update:check', () => updater.check());
+ipcMain.handle('update:install', () => { quitting = true; tracker.stop(); save(true); updater.install(); });
+ipcMain.handle('update:open', () => shell.openExternal(updater.get().url || updater.releasesUrl));
+
 ipcMain.handle('theme:titlebar', (_e, { color, symbol }) => { try { win.setTitleBarOverlay({ color, symbolColor: symbol, height: 44 }); } catch {} });
 
 let syncTimer = null;
@@ -545,4 +553,6 @@ app.whenReady().then(async () => {
   tracker.start();
   scheduleSync();
   rescan({ api: true });
+  // Look for a new version every launch (skipped in screenshot runs unless asked for)
+  if (!process.env.HEARTH_SHOTS || process.env.HEARTH_UPDATE_TEST) setTimeout(() => updater.check(), 3000);
 });

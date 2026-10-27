@@ -28,4 +28,5 @@ contextBridge.exposeInMainWorld('hub', {
   titlebar: call('theme:titlebar'),
   onChange: on('library:changed'),
   onTick: on('library:tick'),
+  update: { get: call('update:get'), check: call('update:check'), install: call('update:install'), open: call('update:open'), onState: on('update:state') },
 });

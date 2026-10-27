@@ -35,6 +35,7 @@ One library for every game on your PC: Steam, itch.io and everything else, with 
 - **Playtime stats:** total playtime per store, your most played games and the last 14 days
 - **Favourites, search, custom names and covers** for any game
 - **Runs in the tray** so tracking keeps going with the window closed, and it can start with Windows
+- **Updates itself:** checks for a new version every time it starts
 - **Themes:** Rosé Pine and Rosé Pine Dawn
 
 ## Previews
@@ -62,7 +63,12 @@ One library for every game on your PC: Steam, itch.io and everything else, with 
 
 ### Updating
 
-Download the newest file from the [latest release](https://github.com/phsrp/hearth/releases/latest). Run the new Setup over the old version, or replace the old Portable file with the new one. Your library and playtime are kept.
+Hearth checks for a new version every time it starts.
+
+- **Setup version:** the update downloads in the background. A bar at the top tells you when it's ready; click **Restart now**, or it installs the next time you close Hearth from the tray.
+- **Portable version:** it can't update itself, so the bar links you to the new download. Replace the old Portable file with the new one.
+
+You can also check by hand in **Settings → Updates**. Your library and playtime are always kept. (Auto updates start from version 1.0.1. If you have 1.0.0, download the new version once by hand.)
 
 ## Setting up Discord status
 

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: ghimg: https:; style-src 'self' 'unsafe-inline'; font-src 'self'">
+  <title>Hearth</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="icons.js"></script>
+</head>
+<body>
+  <header class="titlebar">
+    <div class="brand"><span class="i" data-i="flame"></span><span>Hearth</span></div>
+    <span class="app-count" id="game-count"></span>
+    <label class="search">
+      <span class="i" data-i="search"></span>
+      <input id="search" type="text" placeholder="Search games" spellcheck="false" autocomplete="off">
+      <button class="icon-btn clear-search" id="clear-search" title="Clear search"><span class="i" data-i="x"></span></button>
+    </label>
+    <div class="title-actions">
+      <button class="icon-btn" id="btn-refresh" title="Rescan and sync Steam playtime (F5)"><span class="i" data-i="refresh"></span></button>
+      <button class="icon-btn" id="btn-add" title="Add games"><span class="i" data-i="plus"></span></button>
+      <button class="icon-btn" id="btn-stats" title="Playtime stats"><span class="i" data-i="chart-bar"></span></button>
+      <button class="icon-btn" id="btn-settings" title="Settings"><span class="i" data-i="settings"></span></button>
+      <button class="icon-btn" id="btn-theme" title="Switch light / dark"><span class="i" data-i="moon"></span></button>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div class="tabs" id="tabs">
+      <button class="tab" data-f="all"><span class="i" data-i="apps"></span>All <span class="n"></span></button>
+      <button class="tab" data-f="steam"><span class="i" data-i="brand-steam"></span>Steam <span class="n"></span></button>
+      <button class="tab" data-f="itch"><span class="i" data-i="brand-itch"></span>itch.io <span class="n"></span></button>
+      <button class="tab" data-f="other"><span class="i" data-i="device-desktop"></span>Other <span class="n"></span></button>
+      <button class="tab" data-f="fav"><span class="i" data-i="star"></span>Favourites <span class="n"></span></button>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn small" id="btn-add-game" title="Add a game's .exe, or drop one on the window"><span class="i" data-i="plus"></span>Add game</button>
+    <label class="toggle" title="Hide owned Steam games that aren't installed">
+      <input type="checkbox" id="installed-only"><span class="track"></span>Installed only
+    </label>
+    <div class="seg" id="view-seg">
+      <button data-v="list" title="List"><span class="i" data-i="list"></span></button>
+      <button data-v="grid" title="Covers"><span class="i" data-i="layout-grid"></span></button>
+    </div>
+  </div>
+
+  <main class="layout">
+    <section class="list-wrap" id="list-wrap">
+      <div class="list-head" id="list-head">
+        <span class="col-icon"></span>
+        <button class="col col-name" data-sort="name">Name <span class="sort"></span></button>
+        <button class="col col-src" data-sort="source">Source <span class="sort"></span></button>
+        <button class="col col-num" data-sort="playSeconds">Playtime <span class="sort"></span></button>
+        <button class="col col-num col-date" data-sort="lastPlayed">Last played <span class="sort"></span></button>
+      </div>
+      <div class="grid-head" id="grid-head">
+        <span class="muted">Sort by</span>
+        <button class="chip" data-sort="playSeconds">Playtime <span class="sort"></span></button>
+        <button class="chip" data-sort="lastPlayed">Last played <span class="sort"></span></button>
+        <button class="chip" data-sort="name">Name <span class="sort"></span></button>
+      </div>
+      <div class="list" id="list" tabindex="0"></div>
+      <div class="empty" id="empty" hidden>
+        <span class="i big" data-i="ghost"></span>
+        <p id="empty-text">Nothing matches your search.</p>
+        <div id="empty-actions"></div>
+      </div>
+      <div class="loading" id="loading"><span class="i spin" data-i="loader-2"></span> Looking for your games</div>
+    </section>
+
+    <aside class="details" id="details">
+      <div class="details-empty">
+        <span class="i big" data-i="device-gamepad-2"></span>
+        <p>Pick a game to see its playtime.</p>
+        <p class="hint">Double-click a game to play it.</p>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="actionbar">
+    <div class="foot-stat"><span class="i" data-i="hourglass"></span><strong id="total-time">0 h</strong> played in total</div>
+    <div class="foot-stat muted" id="week-time"></div>
+    <div class="spacer"></div>
+    <div class="now-playing" id="now-playing" hidden></div>
+    <div class="sync-state muted" id="sync-state"></div>
+  </footer>
+
+  <div class="menu" id="menu" hidden></div>
+  <div class="overlay" id="overlay" hidden><div class="modal" id="modal"></div></div>
+  <div class="toasts" id="toasts"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
